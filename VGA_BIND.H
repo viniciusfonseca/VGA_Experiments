@@ -15,10 +15,22 @@
 
 typedef unsigned char byte;
 typedef unsigned short word;
+typedef long           fixed16_16;
+
+fixed16_16 SIN_ACOS[1024];
 
 byte far *VGA = (byte far *)0xA0000000L; /* this points to video memory. */
 word *sys_clock = (word *)0x0000046C;    /* this points to the 18.2hz system
                                          clock. */
+
+void init_sinacos_table()
+{
+    int i;
+    for(i=0;i<1024;i++)                 /* create the sin(arccos(x)) table. */
+    {
+        SIN_ACOS[i]=sin(acos((float)i/1024))*0x10000L;
+    }
+}
 
 /**************************************************************************
  *  set_mode                                                              *
@@ -166,6 +178,31 @@ void rect_fill(int left, int top, int right, int bottom, byte color)
     for (i = top_offset; i <= bottom_offset; i += SCREEN_WIDTH)
     {
         memset(&VGA[i], color, width);
+    }
+}
+
+void draw_circle(int x, int y, int radius, byte color)
+{
+    fixed16_16 n = 0, invradius=(1/(float) radius) * 0x10000L;
+    int dx = 0, dy = radius -1;
+    word dxoffset, dyoffset, offset = (y<<8) + (y<<6) +x;
+
+    while (dx <= dy)
+    {
+        dxoffset = (dx<<8) + (dx<<6);
+        dyoffset = (dy<<8) + (dy<<6);
+
+        VGA[offset + dy - dxoffset] = color; /* octant 0 */
+        VGA[offset + dx - dyoffset] = color; /* octant 1 */
+        VGA[offset - dx - dyoffset] = color; /* octant 2 */
+        VGA[offset - dy - dxoffset] = color; /* octant 3 */
+        VGA[offset - dy + dxoffset] = color; /* octant 4 */
+        VGA[offset - dx + dyoffset] = color; /* octant 5 */
+        VGA[offset + dx + dyoffset] = color; /* octant 6 */
+        VGA[offset + dy + dxoffset] = color; /* octant 7 */
+        dx++;
+        n += invradius;
+        dy = (int)((radius * SIN_ACOS[(int)(n>>6)]) >> 16);
     }
 }
 

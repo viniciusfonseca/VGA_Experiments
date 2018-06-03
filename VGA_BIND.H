@@ -11,6 +11,9 @@
 #define SCREEN_HEIGHT 200 /* height in pixels of mode 0x13 */
 #define NUM_COLORS 256    /* number of colors in mode 0x13 */
 
+#define INPUT_STATUS        0x03da
+#define VRETRACE            0x08
+
 #define sign(x) ((x < 0) ? -1 : ((x > 0) ? 1 : 0))
 
 typedef unsigned char byte;
@@ -22,6 +25,13 @@ fixed16_16 SIN_ACOS[1024];
 byte far *VGA = (byte far *)0xA0000000L; /* this points to video memory. */
 word *sys_clock = (word *)0x0000046C;    /* this points to the 18.2hz system
                                          clock. */
+
+typedef struct t_bitmap
+{
+    word width;
+    word height;
+    byte * data;
+} BITMAP;
 
 void init_sinacos_table()
 {
@@ -204,6 +214,93 @@ void draw_circle(int x, int y, int radius, byte color)
         n += invradius;
         dy = (int)((radius * SIN_ACOS[(int)(n>>6)]) >> 16);
     }
+}
+
+void fill_circle(int x, int y, int radius, byte color)
+{
+    fixed16_16 n = 0, invradius=(1/(float) radius) * 0x10000L;
+    int dx = 0, dy = radius -1, i;
+    word dxoffset, dyoffset, offset = (y<<8) + (y<<6) +x;
+
+    while (dx <= dy)
+    {
+        dxoffset = (dx<<8) + (dx<<6);
+        dyoffset = (dy<<8) + (dy<<6);
+        for (i = dy; i >= dx; i--, dyoffset -= SCREEN_WIDTH)
+        {
+            VGA[offset + i  - dxoffset] = color; /* octant 0 */
+            VGA[offset + dx - dyoffset] = color; /* octant 1 */
+            VGA[offset - dx - dyoffset] = color; /* octant 2 */
+            VGA[offset - i  - dxoffset] = color; /* octant 3 */
+            VGA[offset - i  - dxoffset] = color; /* octant 4 */
+            VGA[offset - dx - dyoffset] = color; /* octant 5 */
+            VGA[offset + dx - dyoffset] = color; /* octant 6 */
+            VGA[offset + i  - dxoffset] = color; /* octant 7 */
+        }
+        dx++;
+        n += invradius;
+        dy = (int)((radius * SIN_ACOS[(int)(n>>6)]) >> 16);
+    }
+}
+
+BITMAP * loadbmp(char * filepath)
+{
+    FILE * fp;
+    long index;
+    word num_colors;
+    int x;
+
+    fp = fopen(file, filepath, "rb");
+    if (fp == NULL)
+    {
+        printf("Error opening file \"%s\"\n", filepath);
+        exit(1);
+    }
+    if (fgetc(fp) != 'B' || fgetc(fp) != 'M')
+    {
+        fclose(fp);
+        printf("\"%s\" is not a bitmap file\n");
+        exit(1);
+    }
+    BITMAP * bmp = malloc(sizeof(BITMAP));
+
+    // PARSE BMP HEADER
+    fskip(fp, 16);
+    fread(&bmp->width, sizeof(word), 1, fp);
+    fskip(fp, 2);
+    fread(&bmp->height, sizeof(word), 1, fp);
+    fskip(fp, 22);
+    fread(&num_colors, sizeof(word), 1, fp);
+    fskip(fp, 6);
+
+    if (num_colors == 0) num_colors = 256;
+
+    bmp->data = (byte *) malloc((word)(bmp->width * bmp->height));
+
+    if (bmp->data == NULL)
+    {
+        fclose(fp);
+        printf("Error allocating memory for file \"%s\"\n", filepath);
+        exit(1);
+    }
+    fskip(fp, num_colors * 4);
+
+    for (index = (bmp->height - 1) * bmp->width; index >= 0; index -= bmp->width)
+    {
+        for (x = 0; x < bmp->width; x++)
+        {
+            bmp->data[(word) index + x] = (byte) fgetc(fp);
+        }
+    }
+    fclose(fp);
+
+    return bmp;
+}
+
+void wait_for_retrace()
+{
+    while  ((inp(INPUT_STATUS) & VRETRACE)) {};
+    while (!(inp(INPUT_STATUS) & VRETRACE)) {};
 }
 
 #endif

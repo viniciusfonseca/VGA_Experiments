@@ -11,6 +11,9 @@
 #define SCREEN_HEIGHT 200 /* height in pixels of mode 0x13 */
 #define NUM_COLORS 256    /* number of colors in mode 0x13 */
 
+#define PALETTE_INDEX 0x03c8
+#define PALETTE_DATA 0x03c9
+
 #define INPUT_STATUS        0x03da
 #define VRETRACE            0x08
 
@@ -31,6 +34,7 @@ typedef struct t_bitmap
     word width;
     word height;
     byte * data;
+    byte palette[256 * 3];
 } BITMAP;
 
 void * vga_memset(byte far * b, int c, size_t len)
@@ -280,6 +284,7 @@ BITMAP * load_bmp(char * filepath)
     long index;
     word num_colors;
     int x;
+    BITMAP * bmp = (BITMAP *) malloc(sizeof(BITMAP));
 
     fp = fopen(filepath, "rb");
     if (fp == NULL)
@@ -293,7 +298,6 @@ BITMAP * load_bmp(char * filepath)
         printf("\"%s\" is not a bitmap file\n");
         exit(1);
     }
-    BITMAP * bmp = (BITMAP *) malloc(sizeof(BITMAP));
 
     // PARSE BMP HEADER
     fskip(fp, 16);
@@ -314,7 +318,14 @@ BITMAP * load_bmp(char * filepath)
         printf("Error allocating memory for file \"%s\"\n", filepath);
         exit(1);
     }
-    fskip(fp, num_colors * 4);
+
+    for (index = 0; index < num_colors; index++)
+    {
+        bmp->palette[(int)(index*3+2)] = fgetc(fp) >> 2;
+        bmp->palette[(int)(index*3+1)] = fgetc(fp) >> 2;
+        bmp->palette[(int)(index*3  )] = fgetc(fp) >> 2;
+        x=fgetc(fp);
+    }
 
     for (index = (bmp->height - 1) * bmp->width; index >= 0; index -= bmp->width)
     {
@@ -323,6 +334,7 @@ BITMAP * load_bmp(char * filepath)
             bmp->data[(word) index + x] = (byte) fgetc(fp);
         }
     }
+
     fclose(fp);
 
     return bmp;
@@ -357,6 +369,36 @@ void draw_transparent_bmp(BITMAP * bmp, int x, int y, byte color)
         }
         screen_offset += SCREEN_WIDTH;
     }
+}
+
+void set_palette(byte * palette)
+{
+    int i;
+
+    outp(PALETTE_INDEX, 0);
+
+    for (i = 0; i < 256 * 3; i++)
+    {
+        outp(PALETTE_DATA, palette[i]);
+    }
+}
+
+void rotate_palette(byte * palette)
+{
+    int i, r, g, b, l = 256 * 3 - 3;
+
+    r=palette[3];
+    g=palette[4];
+    b=palette[5];
+
+    for (i = 3; i < l; i++)
+        palette[i] = palette[i + 3];
+    
+    palette[l    ] = r;
+    palette[l + 1] = g;
+    palette[l + 2] = b;
+
+    set_palette(palette);
 }
 
 void wait_for_retrace()

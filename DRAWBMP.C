@@ -36,6 +36,7 @@ int main()
     getchar();
 
     set_mode(VGA_256_COLOR_MODE);
+    set_palette(bmp->palette);
     
     draw_bmp(bmp, 4, 60);
 

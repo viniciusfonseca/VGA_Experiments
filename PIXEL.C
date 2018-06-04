@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <dos.h>
 #include <string.h>
+#include <math.h>
 #include "VGA_BIND.H"
 
 /**************************************************************************
@@ -18,6 +19,12 @@ void main()
   draw_rect(19, 19, SCREEN_WIDTH-19, SCREEN_HEIGHT-19, 0xF);
 
   draw_rect(16, 16, SCREEN_WIDTH-16, SCREEN_HEIGHT-16, 0xF);
+
+  // memset(VGA + 643, 0xF, 3);
+  byte far * f = &VGA[640];
+  *f = 0xF;
+  *(f+1) = 0xF;
+  *(f+2) = 0xF;
 
   getchar();
   

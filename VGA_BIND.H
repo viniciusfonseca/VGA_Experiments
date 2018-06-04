@@ -33,6 +33,31 @@ typedef struct t_bitmap
     byte * data;
 } BITMAP;
 
+void * vga_memset(byte far * b, int c, size_t len)
+{
+    byte far * p = b;
+    while(len>0)
+    {
+        *p=c;
+        p++;
+        len--;
+    }
+    return b;
+}
+
+void * vga_memcpy(byte far * dest, byte * src, size_t n)
+{
+    byte far * csrc = (byte far *) src;
+    byte far * cdest = (byte far *) dest;
+
+    int i;
+    for (i = 0; i < n; i++)
+    {
+        cdest[i] = csrc[i];
+    }
+    return cdest;
+}
+
 void init_sinacos_table()
 {
     int i;
@@ -180,14 +205,14 @@ void rect_fill(int left, int top, int right, int bottom, byte color)
         right = temp;
     }
 
-    top_offset = (top<<8) + (top<<6);
-    bottom_offset = (bottom<<8) + (bottom<<6);
+    top_offset = (top<<8) + (top<<6) + left;
+    bottom_offset = (bottom<<8) + (bottom<<6) + left;
 
     width = right - left + 1;
 
     for (i = top_offset; i <= bottom_offset; i += SCREEN_WIDTH)
     {
-        memset(&VGA[i], color, width);
+        vga_memset(&VGA[i], color, width);
     }
 }
 
@@ -310,7 +335,7 @@ void draw_bmp(BITMAP * bmp, int x, int y)
     word bitmap_offset = 0;
     for (j = 0; j < bmp->height; j++)
     {
-        memcpy(&VGA[screen_offset], &bmp->data[bitmap_offset], bmp->width);
+        vga_memcpy(&VGA[screen_offset], &bmp->data[bitmap_offset], bmp->width);
         bitmap_offset += bmp->width;
         screen_offset += SCREEN_WIDTH;
     }

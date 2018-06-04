@@ -2,6 +2,7 @@
     "files.associations": {
         "*.C": "c",
         "dos.h": "c",
-        "math.h": "c"
+        "math.h": "c",
+        "mem.h": "c"
     }
 }

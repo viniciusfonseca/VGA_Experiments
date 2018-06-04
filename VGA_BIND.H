@@ -1,6 +1,8 @@
 #ifndef __VGA_BIND_H_
 #define __VGA_BIND_H_
 
+#include "SIZDEFS.H"
+
 #define VIDEO_INT 0x10          /* the BIOS video interrupt. */
 #define WRITE_DOT 0x0C          /* BIOS func to plot a pixel. */
 #define SET_MODE 0x00           /* BIOS func to set the video mode. */
@@ -18,10 +20,6 @@
 #define VRETRACE            0x08
 
 #define sign(x) ((x < 0) ? -1 : ((x > 0) ? 1 : 0))
-
-typedef unsigned char byte;
-typedef unsigned short word;
-typedef long           fixed16_16;
 
 fixed16_16 SIN_ACOS[1024];
 

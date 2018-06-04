@@ -243,14 +243,20 @@ void fill_circle(int x, int y, int radius, byte color)
     }
 }
 
-BITMAP * loadbmp(char * filepath)
+void fskip(FILE * fp, int num_bytes)
+{
+    int i;
+    for (i = 0; i < num_bytes; i++) fgetc(fp);
+}
+
+BITMAP * load_bmp(char * filepath)
 {
     FILE * fp;
     long index;
     word num_colors;
     int x;
 
-    fp = fopen(file, filepath, "rb");
+    fp = fopen(filepath, "rb");
     if (fp == NULL)
     {
         printf("Error opening file \"%s\"\n", filepath);
@@ -262,7 +268,7 @@ BITMAP * loadbmp(char * filepath)
         printf("\"%s\" is not a bitmap file\n");
         exit(1);
     }
-    BITMAP * bmp = malloc(sizeof(BITMAP));
+    BITMAP * bmp = (BITMAP *) malloc(sizeof(BITMAP));
 
     // PARSE BMP HEADER
     fskip(fp, 16);
@@ -295,6 +301,37 @@ BITMAP * loadbmp(char * filepath)
     fclose(fp);
 
     return bmp;
+}
+
+void draw_bmp(BITMAP * bmp, int x, int y)
+{
+    int j;
+    word screen_offset = (y<<8) + (y<<6) + x;
+    word bitmap_offset = 0;
+    for (j = 0; j < bmp->height; j++)
+    {
+        memcpy(&VGA[screen_offset], &bmp->data[bitmap_offset], bmp->width);
+        bitmap_offset += bmp->width;
+        screen_offset += SCREEN_WIDTH;
+    }
+}
+
+void draw_transparent_bmp(BITMAP * bmp, int x, int y, byte color)
+{
+    int i, j;
+    word screen_offset = (y<<8) + (y<<6);
+    word bitmap_offset = 0;
+    byte data;
+
+    for (j = 0; j < bmp->height; j++)
+    {
+        for (i = 0; i < bmp->width; i++)
+        {
+            data = bmp->data[bitmap_offset];
+            if (data != color) VGA[screen_offset + x + i] = data;
+        }
+        screen_offset += SCREEN_WIDTH;
+    }
 }
 
 void wait_for_retrace()

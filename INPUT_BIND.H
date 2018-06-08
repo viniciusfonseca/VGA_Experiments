@@ -21,6 +21,9 @@
 #define STATE_PRESSED     2
 #define STATE_WAITING     3
 
+#define NUM_BUTTONS       2
+#define NUM_MOUSEBITMAPS  9
+
 typedef short sword;
 
 typedef struct tagMOUSEBITMAP
@@ -46,9 +49,8 @@ typedef struct
 
 sword init_mouse(MOUSE * mouse)
 {
-    sword dx, dy;
-    MOUSE * mouse = (MOUSE *) malloc(sizeof(MOUSE));
     union REGS regs;
+    sword dx, dy;
     regs.x.ax = MOUSE_RESET;
     int86(MOUSE_INT, &regs, &regs);
 
@@ -64,24 +66,14 @@ sword init_mouse(MOUSE * mouse)
     return mouse->on;
 }
 
-void interrupt get_scan()
+void get_mouse_motion(sword *dx, sword *dy)
 {
-    asm cli
-    asm {
-        IN  AL, 060h    /* read scan code */
-        MOV gb_scan, AL
-        IN  AL, 061h    /* read keyboard status */
-        MOV BL, AL
-        OR  AL, 080h
-        OUT 061h, AL    /* set bit 7 and write */
-        MOV AL, BL
-        OUT 061h, AL    /* write again, bit 7 clear */
+    union REGS regs;
 
-        MOV AL, 020h    /* reset PIC */
-        OUT 020h, AL
-
-        STI
-    }
+    regs.x.ax = MOUSE_GETMOTION;
+    int86(MOUSE_INT, &regs, &regs);
+    *dx = regs.x.cx;
+    *dy = regs.x.dx;
 }
 
 #endif

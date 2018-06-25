@@ -17,7 +17,7 @@
                 "UNICODE",
                 "_UNICODE"
             ],
-            "cStandard": "c11",
+            "cStandard": "c99",
             "cppStandard": "c++17"
         }
     ],

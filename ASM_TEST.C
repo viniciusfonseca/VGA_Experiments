@@ -10,9 +10,9 @@ int main()
 
     asm mov dx, &msg // save string address
     asm mov cx, 0x12 // save string length
-    asm mov bx, 0x01 // set output device to standard (stdout)
 
     asm mov ah, 0x40 // set DOS subroutine to write device / file
+    asm mov bx, 0x01 // set output device to standard (stdout)
     asm int     0x21 // call DOS subroutine
 
     asm mov ah, 0x08 // set DOS subroutine to read console input

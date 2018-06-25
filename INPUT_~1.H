@@ -2,6 +2,7 @@
 #define __INPUT_BIND
 
 #include "SIZDEFS.H"
+#include <DOS.H>
 
 #define MOUSE_INT         0x33
 #define MOUSE_RESET       0x00
@@ -13,7 +14,7 @@
 #define MIDDLE_BUTTON     0x02
 
 #define CURSOR_WIDTH      24
-#define CURSOR_HEIGHT     24
+#define CURSOR_HEIGHT     14
 #define CURSOR_SIZE       (CURSOR_WIDTH * CURSOR_HEIGHT)
 
 #define STATE_NORMAL      0
@@ -24,17 +25,15 @@
 #define NUM_BUTTONS       2
 #define NUM_MOUSEBITMAPS  9
 
-typedef short sword;
-
 typedef struct tagMOUSEBITMAP
 {
     int hot_x;
     int hot_y;
     byte data[CURSOR_SIZE];
-    MOUSEBITMAP * next;
+    struct tagMOUSEBITMAP * next;
 } MOUSEBITMAP;
 
-typedef struct
+typedef struct tagMOUSE
 {
     byte on;
     byte button1;
@@ -47,15 +46,17 @@ typedef struct
     MOUSEBITMAP * bmp;
 } MOUSE;
 
+void get_mouse_motion(sword *, sword *);
+
 sword init_mouse(MOUSE * mouse)
 {
-    union REGS regs;
-    sword dx, dy;
-    regs.x.ax = MOUSE_RESET;
-    int86(MOUSE_INT, &regs, &regs);
-
-    mouse->on = regs.x.ax;
-    mouse->num_buttons = regs.x.bx;
+    sword dx, dy, on, num_buttons;
+    asm mov ax, MOUSE_RESET
+    asm int     MOUSE_INT
+    asm mov on, ax
+    mouse->on = on;
+    asm mov num_buttons, bx
+    mouse->num_buttons = num_buttons;
     mouse->button1 = 0;
     mouse->button2 = 0;
     mouse->button3 = 0;
@@ -66,14 +67,15 @@ sword init_mouse(MOUSE * mouse)
     return mouse->on;
 }
 
-void get_mouse_motion(sword *dx, sword *dy)
+void get_mouse_motion(sword * dx, sword * dy)
 {
-    union REGS regs;
-
-    regs.x.ax = MOUSE_GETMOTION;
-    int86(MOUSE_INT, &regs, &regs);
-    *dx = regs.x.cx;
-    *dy = regs.x.dx;
+    sword _cx, _dx;
+    asm mov ax, MOUSE_GETMOTION
+    asm int     MOUSE_INT
+    asm mov _cx, cx
+    asm mov _dx, dx
+    *dx = _cx;
+    *dy = _dx;
 }
 
 #endif

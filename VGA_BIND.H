@@ -1,6 +1,7 @@
 #ifndef __VGA_BIND_H_
 #define __VGA_BIND_H_
 
+#include <stdio.h>
 #include "SIZDEFS.H"
 
 #define VIDEO_INT 0x10          /* the BIOS video interrupt. */
@@ -23,7 +24,7 @@ fixed16_16 SIN_ACOS[1024];
 
 byte far *VGA = (byte far *)0xA0000000L; /* this points to video memory. */
 word *sys_clock = (word *)0x0000046C;    /* this points to the 18.2hz system
-                                         clock. */
+					 clock. */
 
 typedef struct t_bitmap
 {
@@ -33,19 +34,19 @@ typedef struct t_bitmap
     byte palette[256 * 3];
 } BITMAP;
 
-void * vga_memset(byte far * b, int c, size_t len)
+byte far * vga_memset(byte far * b, int c, int len)
 {
     byte far * p = b;
     while(len>0)
     {
-        *p=c;
-        p++;
-        len--;
+	*p=c;
+	p++;
+	len--;
     }
     return b;
 }
 
-void * vga_memcpy(byte far * dest, byte * src, size_t n)
+byte far * vga_memcpy(byte far * dest, byte * src, int n)
 {
     byte far * csrc = (byte far *) src;
     byte far * cdest = (byte far *) dest;
@@ -53,7 +54,7 @@ void * vga_memcpy(byte far * dest, byte * src, size_t n)
     int i;
     for (i = 0; i < n; i++)
     {
-        cdest[i] = csrc[i];
+	cdest[i] = csrc[i];
     }
     return cdest;
 }
@@ -63,7 +64,7 @@ void init_sinacos_table()
     int i;
     for(i=0;i<1024;i++)                 /* create the sin(arccos(x)) table. */
     {
-        SIN_ACOS[i]=sin(acos((float)i/1024))*0x10000L;
+	SIN_ACOS[i] = sin(acos((float)i/1024)) * 0x10000L;
     }
 }
 
@@ -74,11 +75,9 @@ void init_sinacos_table()
 
 void set_mode(byte mode)
 {
-    union REGS regs;
-
-    regs.h.ah = SET_MODE;
-    regs.h.al = mode;
-    int86(VIDEO_INT, &regs, &regs);
+	asm mov ah, SET_MODE
+	asm mov al, mode
+	asm int     VIDEO_INT
 }
 
 void plot_pixel(int x, int y, byte color)
@@ -106,31 +105,31 @@ void plot_line(int x1, int y1, int x2, int y2, byte color)
 
     if (dx >= dy)
     {
-        for (i = 0; i < dx; i++)
-        {
-            y += dy;
-            if (y >= dx)
-            {
-                y -= dx;
-                py += sdy;
-            }
-            px += sdx;
-            plot_pixel(px, py, color);
-        }
+	for (i = 0; i < dx; i++)
+	{
+	    y += dy;
+	    if (y >= dx)
+	    {
+		y -= dx;
+		py += sdy;
+	    }
+	    px += sdx;
+	    plot_pixel(px, py, color);
+	}
     }
     else
     {
-        for (i = 0; i < dy; i++)
-        {
-            x += dx;
-            if (x >= dy)
-            {
-                x -= dy;
-                px += sdx;
-            }
-            py += sdy;
-            plot_pixel(px, py, color);
-        }
+	for (i = 0; i < dy; i++)
+	{
+	    x += dx;
+	    if (x >= dy)
+	    {
+		x -= dy;
+		px += sdx;
+	    }
+	    py += sdy;
+	    plot_pixel(px, py, color);
+	}
     }
 }
 
@@ -139,20 +138,20 @@ void draw_polygon(int num_verts, int *verts, byte color)
     int i;
     for (i = 0; i < num_verts - 1; i++)
     {
-        plot_line(
-            verts[(i<<1)+0],
-            verts[(i<<1)+1],
-            verts[(i<<1)+2],
-            verts[(i<<1)+3],
-            color
-        );
+	plot_line(
+	    verts[(i<<1)+0],
+	    verts[(i<<1)+1],
+	    verts[(i<<1)+2],
+	    verts[(i<<1)+3],
+	    color
+	);
     }
     plot_line(
-        verts[0],
-        verts[1],
-        verts[(num_verts<<1)-2],
-        verts[(num_verts<<1)-1],
-        color
+	verts[0],
+	verts[1],
+	verts[(num_verts<<1)-2],
+	verts[(num_verts<<1)-1],
+	color
     );
 }
 
@@ -162,15 +161,15 @@ void draw_rect(int left, int top, int right, int bottom, byte color)
 
     if (top > bottom)
     {
-        temp = top;
-        top = bottom;
-        bottom = temp;
+	temp = top;
+	top = bottom;
+	bottom = temp;
     }
     if (left > right)
     {
-        temp = left;
-        left = right;
-        right = temp;
+	temp = left;
+	left = right;
+	right = temp;
     }
 
     top_offset = (top<<8) + (top<<6);
@@ -178,13 +177,13 @@ void draw_rect(int left, int top, int right, int bottom, byte color)
 
     for (i = left; i <= right; i++)
     {
-        VGA[top_offset+i] = color;
-        VGA[bottom_offset+i] = color;
+	VGA[top_offset+i] = color;
+	VGA[bottom_offset+i] = color;
     }
     for (i = top_offset; i<= bottom_offset; i+= SCREEN_WIDTH)
     {
-        VGA[left+i] = color;
-        VGA[right+i] = color;
+	VGA[left+i] = color;
+	VGA[right+i] = color;
     }
 }
 
@@ -194,15 +193,15 @@ void rect_fill(int left, int top, int right, int bottom, byte color)
 
     if (top > bottom)
     {
-        temp = top;
-        top = bottom;
-        bottom = temp;
+	temp = top;
+	top = bottom;
+	bottom = temp;
     }
     if (left > right)
     {
-        temp = left;
-        left = right;
-        right = temp;
+	temp = left;
+	left = right;
+	right = temp;
     }
 
     top_offset = (top<<8) + (top<<6) + left;
@@ -212,7 +211,7 @@ void rect_fill(int left, int top, int right, int bottom, byte color)
 
     for (i = top_offset; i <= bottom_offset; i += SCREEN_WIDTH)
     {
-        vga_memset(&VGA[i], color, width);
+	vga_memset(&VGA[i], color, width);
     }
 }
 
@@ -224,20 +223,20 @@ void draw_circle(int x, int y, int radius, byte color)
 
     while (dx <= dy)
     {
-        dxoffset = (dx<<8) + (dx<<6);
-        dyoffset = (dy<<8) + (dy<<6);
+	dxoffset = (dx<<8) + (dx<<6);
+	dyoffset = (dy<<8) + (dy<<6);
 
-        VGA[offset + dy - dxoffset] = color; /* octant 0 */
-        VGA[offset + dx - dyoffset] = color; /* octant 1 */
-        VGA[offset - dx - dyoffset] = color; /* octant 2 */
-        VGA[offset - dy - dxoffset] = color; /* octant 3 */
-        VGA[offset - dy + dxoffset] = color; /* octant 4 */
-        VGA[offset - dx + dyoffset] = color; /* octant 5 */
-        VGA[offset + dx + dyoffset] = color; /* octant 6 */
-        VGA[offset + dy + dxoffset] = color; /* octant 7 */
-        dx++;
-        n += invradius;
-        dy = (int)((radius * SIN_ACOS[(int)(n>>6)]) >> 16);
+	VGA[offset + dy - dxoffset] = color; /* octant 0 */
+	VGA[offset + dx - dyoffset] = color; /* octant 1 */
+	VGA[offset - dx - dyoffset] = color; /* octant 2 */
+	VGA[offset - dy - dxoffset] = color; /* octant 3 */
+	VGA[offset - dy + dxoffset] = color; /* octant 4 */
+	VGA[offset - dx + dyoffset] = color; /* octant 5 */
+	VGA[offset + dx + dyoffset] = color; /* octant 6 */
+	VGA[offset + dy + dxoffset] = color; /* octant 7 */
+	dx++;
+	n += invradius;
+	dy = (int)((radius * SIN_ACOS[(int)(n>>6)]) >> 16);
     }
 }
 
@@ -249,22 +248,22 @@ void fill_circle(int x, int y, int radius, byte color)
 
     while (dx <= dy)
     {
-        dxoffset = (dx<<8) + (dx<<6);
-        dyoffset = (dy<<8) + (dy<<6);
-        for (i = dy; i >= dx; i--, dyoffset -= SCREEN_WIDTH)
-        {
-            VGA[offset + i  - dxoffset] = color; /* octant 0 */
-            VGA[offset + dx - dyoffset] = color; /* octant 1 */
-            VGA[offset - dx - dyoffset] = color; /* octant 2 */
-            VGA[offset - i  - dxoffset] = color; /* octant 3 */
-            VGA[offset - i  - dxoffset] = color; /* octant 4 */
-            VGA[offset - dx - dyoffset] = color; /* octant 5 */
-            VGA[offset + dx - dyoffset] = color; /* octant 6 */
-            VGA[offset + i  - dxoffset] = color; /* octant 7 */
-        }
-        dx++;
-        n += invradius;
-        dy = (int)((radius * SIN_ACOS[(int)(n>>6)]) >> 16);
+	dxoffset = (dx<<8) + (dx<<6);
+	dyoffset = (dy<<8) + (dy<<6);
+	for (i = dy; i >= dx; i--, dyoffset -= SCREEN_WIDTH)
+	{
+	    VGA[offset + i  - dxoffset] = color; /* octant 0 */
+	    VGA[offset + dx - dyoffset] = color; /* octant 1 */
+	    VGA[offset - dx - dyoffset] = color; /* octant 2 */
+	    VGA[offset - i  - dxoffset] = color; /* octant 3 */
+	    VGA[offset - i  - dxoffset] = color; /* octant 4 */
+	    VGA[offset - dx - dyoffset] = color; /* octant 5 */
+	    VGA[offset + dx - dyoffset] = color; /* octant 6 */
+	    VGA[offset + i  - dxoffset] = color; /* octant 7 */
+	}
+	dx++;
+	n += invradius;
+	dy = (int)((radius * SIN_ACOS[(int)(n>>6)]) >> 16);
     }
 }
 
